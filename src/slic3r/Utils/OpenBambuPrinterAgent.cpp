@@ -26,9 +26,10 @@
 
 #include <openssl/evp.h>
 
+#include <boost/filesystem.hpp>
+
 #include <chrono>
 #include <cstring>
-#include <filesystem>
 #include <fstream>
 #include <sstream>
 
@@ -431,8 +432,8 @@ int OpenBambuPrinterAgent::do_local_print(PrintParams& params, OnUpdateStatusFn 
     if (cancel_fn && cancel_fn()) return BAMBU_NETWORK_ERR_CANCELED;
 
     // Validate file exists
-    std::error_code ec;
-    auto file_size = std::filesystem::file_size(params.filename, ec);
+    boost::system::error_code ec;
+    auto file_size = boost::filesystem::file_size(params.filename, ec);
     if (ec) {
         if (update_fn) update_fn(SendingPrintJobStage::PrintingStageERROR,
                                  BAMBU_NETWORK_ERR_FILE_NOT_EXIST, "File not found");
@@ -458,7 +459,7 @@ int OpenBambuPrinterAgent::do_local_print(PrintParams& params, OnUpdateStatusFn 
     std::string ftp_file = params.ftp_file;
     if (ftp_file.empty()) {
         // Use the filename from the local path
-        std::filesystem::path p(params.filename);
+        boost::filesystem::path p(params.filename);
         ftp_file = p.filename().string();
     }
     std::string remote_path = "/" + ftp_file;
@@ -551,8 +552,8 @@ int OpenBambuPrinterAgent::start_send_gcode_to_sdcard(PrintParams params, OnUpda
     if (update_fn) update_fn(SendingPrintJobStage::PrintingStageCreate, 0, "Starting upload");
     if (cancel_fn && cancel_fn()) return BAMBU_NETWORK_ERR_CANCELED;
 
-    std::error_code ec;
-    auto file_size = std::filesystem::file_size(params.filename, ec);
+    boost::system::error_code ec;
+    auto file_size = boost::filesystem::file_size(params.filename, ec);
     if (ec) {
         if (update_fn) update_fn(SendingPrintJobStage::PrintingStageERROR,
                                  BAMBU_NETWORK_ERR_FILE_NOT_EXIST, "File not found");
@@ -565,7 +566,7 @@ int OpenBambuPrinterAgent::start_send_gcode_to_sdcard(PrintParams params, OnUpda
     }
 
     std::string ftp_file = params.ftp_file.empty()
-        ? std::filesystem::path(params.filename).filename().string()
+        ? boost::filesystem::path(params.filename).filename().string()
         : params.ftp_file;
     std::string remote_path = "/" + ftp_file;
     if (!params.ftp_folder.empty()) remote_path = "/" + params.ftp_folder + "/" + ftp_file;
