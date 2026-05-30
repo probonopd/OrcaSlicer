@@ -17,6 +17,7 @@
 #include <boost/log/trivial.hpp>
 
 #include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cstring>
 #include <random>

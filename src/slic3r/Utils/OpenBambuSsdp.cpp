@@ -15,6 +15,7 @@
 #include <boost/log/trivial.hpp>
 
 #include <algorithm>
+#include <cerrno>
 #include <cstring>
 #include <map>
 #include <sstream>

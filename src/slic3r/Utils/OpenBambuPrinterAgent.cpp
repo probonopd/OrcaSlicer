@@ -157,26 +157,26 @@ int OpenBambuPrinterAgent::send_message(std::string dev_id, std::string json_str
 int OpenBambuPrinterAgent::connect_printer(std::string dev_id, std::string dev_ip,
                                             std::string username, std::string password, bool use_ssl)
 {
-    std::lock_guard<std::mutex> lk(m_mutex);
-
     BOOST_LOG_TRIVIAL(info) << "OpenBambuPrinterAgent: connecting to " << dev_id
                             << " at " << dev_ip << " (ssl=" << use_ssl << ")";
 
-    // Disconnect any existing connection
-    if (m_mqtt && m_mqtt->is_connected()) {
-        m_mqtt->disconnect();
+    std::unique_ptr<OpenBambuMqtt> mqtt;
+    {
+        std::lock_guard<std::mutex> lk(m_mutex);
+
+        // Disconnect any existing connection
+        if (m_mqtt && m_mqtt->is_connected()) {
+            m_mqtt->disconnect();
+        }
+
+        mqtt = std::make_unique<OpenBambuMqtt>();
+        m_connected_dev_id = dev_id;
     }
 
-    m_mqtt = std::make_unique<OpenBambuMqtt>();
-    m_connected_dev_id = dev_id;
-
-    // Setup callbacks
-    m_mqtt->set_on_connect([this, dev_id](int rc) {
+    // Setup callbacks (these will be called from the MQTT read thread or connect thread)
+    mqtt->set_on_connect([this, dev_id](int rc) {
         if (rc == 0) {
             BOOST_LOG_TRIVIAL(info) << "OpenBambuPrinterAgent: MQTT connected to " << dev_id;
-            // Subscribe to the printer's report topic
-            std::string report_topic = "device/" + dev_id + "/report";
-            m_mqtt->subscribe(report_topic, 0);
 
             OnLocalConnectedFn cb;
             {
@@ -194,7 +194,7 @@ int OpenBambuPrinterAgent::connect_printer(std::string dev_id, std::string dev_i
         }
     });
 
-    m_mqtt->set_on_disconnect([this, dev_id](int rc) {
+    mqtt->set_on_disconnect([this, dev_id](int rc) {
         OnLocalConnectedFn cb;
         {
             std::lock_guard<std::mutex> lk(m_mutex);
@@ -203,7 +203,7 @@ int OpenBambuPrinterAgent::connect_printer(std::string dev_id, std::string dev_i
         if (cb) cb(rc == 0 ? 0 : BAMBU_NETWORK_ERR_DISCONNECT_FAILED, dev_id, "disconnected");
     });
 
-    m_mqtt->set_on_message([this](const std::string& /*topic*/, const std::string& payload) {
+    mqtt->set_on_message([this](const std::string& /*topic*/, const std::string& payload) {
         OnMessageFn cb;
         std::string dev_id;
         {
@@ -224,10 +224,20 @@ int OpenBambuPrinterAgent::connect_printer(std::string dev_id, std::string dev_i
     cfg.tls_insecure = true;  // LAN mode: skip cert verification
     cfg.keepalive_s  = 60;
 
-    int rc = m_mqtt->connect(cfg);
+    int rc = mqtt->connect(cfg);
     if (rc != 0) {
         BOOST_LOG_TRIVIAL(error) << "OpenBambuPrinterAgent: MQTT connect failed, rc=" << rc;
         return BAMBU_NETWORK_ERR_CONNECT_FAILED;
+    }
+
+    // Subscribe to the printer's report topic
+    std::string report_topic = "device/" + dev_id + "/report";
+    mqtt->subscribe(report_topic, 0);
+
+    // Store the connected mqtt client
+    {
+        std::lock_guard<std::mutex> lk(m_mutex);
+        m_mqtt = std::move(mqtt);
     }
 
     return BAMBU_NETWORK_SUCCESS;
@@ -235,12 +245,15 @@ int OpenBambuPrinterAgent::connect_printer(std::string dev_id, std::string dev_i
 
 int OpenBambuPrinterAgent::disconnect_printer()
 {
-    std::lock_guard<std::mutex> lk(m_mutex);
-    if (m_mqtt) {
-        m_mqtt->disconnect();
-        m_mqtt.reset();
+    std::unique_ptr<OpenBambuMqtt> mqtt;
+    {
+        std::lock_guard<std::mutex> lk(m_mutex);
+        mqtt = std::move(m_mqtt);
+        m_connected_dev_id.clear();
     }
-    m_connected_dev_id.clear();
+    if (mqtt) {
+        mqtt->disconnect();
+    }
     return BAMBU_NETWORK_SUCCESS;
 }
 
