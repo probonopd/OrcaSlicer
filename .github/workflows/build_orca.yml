@@ -424,7 +424,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: OrcaSlicer_Linux_ubuntu_${{ env.ubuntu-ver }}_${{ inputs.arch || 'x86_64' }}_${{ env.ver }}
-          path: './build/OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_${{ inputs.arch || ''x86_64'' }}_${{ env.ver }}.AppImage'
+          path: "./build/OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_${{ inputs.arch || 'x86_64' }}_${{ env.ver }}.AppImage"
 
       - name: Upload OrcaSlicer_profile_validator Ubuntu
         if: ${{ ! env.ACT && runner.os == 'Linux' && !vars.SELF_HOSTED }}
