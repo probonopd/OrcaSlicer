@@ -384,8 +384,8 @@ jobs:
         run: |
           ./build_linux.sh -istrlL
           ./scripts/check_appimage_libs.sh ./build/package ./build/package/bin/orca-slicer
-          mv -n ./build/OrcaSlicer_Linux_V${{ env.ver_pure }}.AppImage ./build/OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_${{ env.ver }}.AppImage
-          chmod +x ./build/OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_${{ env.ver }}.AppImage
+          mv -n ./build/OrcaSlicer_Linux_V${{ env.ver_pure }}.AppImage ./build/OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_${{ inputs.arch || 'x86_64' }}_${{ env.ver }}.AppImage
+          chmod +x ./build/OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_${{ inputs.arch || 'x86_64' }}_${{ env.ver }}.AppImage
           tar -cvpf build_tests.tar build/tests
 
         # Use tar because upload-artifacts won't always preserve directory structure
@@ -394,7 +394,7 @@ jobs:
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ github.sha }}-tests
+          name: ${{ github.sha }}-tests-${{ inputs.arch || 'x86_64' }}
           overwrite: true
           path: build_tests.tar
           retention-days: 5
@@ -411,7 +411,7 @@ jobs:
           python3 "$test_repo_dir/run_test.py" "${{ github.workspace }}/build/package/bin/orca-slicer"
 
       - name: Build orca_custom_preset_tests
-        if: github.ref == 'refs/heads/main' && runner.os == 'Linux' && !vars.SELF_HOSTED
+        if: github.ref == 'refs/heads/main' && runner.os == 'Linux' && !vars.SELF_HOSTED && (inputs.arch || 'x86_64') == 'x86_64'
         working-directory: ${{ github.workspace }}/build/src/Release
         shell: bash
         run: |
@@ -423,14 +423,14 @@ jobs:
         if: ${{ ! env.ACT && runner.os == 'Linux' }}
         uses: actions/upload-artifact@v7
         with:
-          name: OrcaSlicer_Linux_ubuntu_${{ env.ubuntu-ver }}_${{ env.ver }}
-          path: './build/OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_${{ env.ver }}.AppImage'
+          name: OrcaSlicer_Linux_ubuntu_${{ env.ubuntu-ver }}_${{ inputs.arch || 'x86_64' }}_${{ env.ver }}
+          path: './build/OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_${{ inputs.arch || "x86_64" }}_${{ env.ver }}.AppImage'
 
       - name: Upload OrcaSlicer_profile_validator Ubuntu
         if: ${{ ! env.ACT && runner.os == 'Linux' && !vars.SELF_HOSTED }}
         uses: actions/upload-artifact@v7
         with:
-          name: OrcaSlicer_profile_validator_Linux_ubuntu_${{ env.ubuntu-ver }}_${{ env.ver }}
+          name: OrcaSlicer_profile_validator_Linux_ubuntu_${{ env.ubuntu-ver }}_${{ inputs.arch || 'x86_64' }}_${{ env.ver }}
           path: './build/src/Release/OrcaSlicer_profile_validator'
 
       - name: Deploy Ubuntu release
@@ -439,12 +439,12 @@ jobs:
         with:
           upload_url: https://uploads.github.com/repos/OrcaSlicer/OrcaSlicer/releases/137995723/assets{?name,label}
           release_id: 137995723
-          asset_path: ./build/OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_${{ env.ver }}.AppImage
-          asset_name: OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_nightly.AppImage
+          asset_path: ./build/OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_${{ inputs.arch || 'x86_64' }}_${{ env.ver }}.AppImage
+          asset_name: OrcaSlicer_Linux_AppImage${{ env.ubuntu-ver-str }}_${{ inputs.arch || 'x86_64' }}_nightly.AppImage
           asset_content_type: application/octet-stream
           max_releases: 1 # optional, if there are more releases than this matching the asset_name, the oldest ones are going to be deleted
       - name: Deploy Ubuntu release
-        if: ${{ github.repository == 'OrcaSlicer/OrcaSlicer' && ! env.ACT && github.ref == 'refs/heads/main' && runner.os == 'Linux' && !vars.SELF_HOSTED }}
+        if: ${{ github.repository == 'OrcaSlicer/OrcaSlicer' && ! env.ACT && github.ref == 'refs/heads/main' && runner.os == 'Linux' && !vars.SELF_HOSTED && (inputs.arch || 'x86_64') == 'x86_64' }}
         uses: rickstaa/action-create-tag@v1
         with:
           tag: "nightly-builds"
@@ -459,12 +459,12 @@ jobs:
           upload_url: https://uploads.github.com/repos/OrcaSlicer/OrcaSlicer/releases/137995723/assets{?name,label}
           release_id: 137995723
           asset_path: ./build/src/Release/OrcaSlicer_profile_validator
-          asset_name: OrcaSlicer_profile_validator_Linux${{ env.ubuntu-ver-str }}_nightly
+          asset_name: OrcaSlicer_profile_validator_Linux${{ env.ubuntu-ver-str }}_${{ inputs.arch || 'x86_64' }}_nightly
           asset_content_type: application/octet-stream
           max_releases: 1
 
       - name: Deploy orca_custom_preset_tests
-        if: ${{ github.repository == 'OrcaSlicer/OrcaSlicer' && ! env.ACT && github.ref == 'refs/heads/main' && runner.os == 'Linux' && !vars.SELF_HOSTED }}
+        if: ${{ github.repository == 'OrcaSlicer/OrcaSlicer' && ! env.ACT && github.ref == 'refs/heads/main' && runner.os == 'Linux' && !vars.SELF_HOSTED && (inputs.arch || 'x86_64') == 'x86_64' }}
         uses: WebFreak001/deploy-nightly@v3.2.0
         with:
           upload_url: https://uploads.github.com/repos/OrcaSlicer/OrcaSlicer/releases/137995723/assets{?name,label}

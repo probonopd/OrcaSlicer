@@ -51,11 +51,18 @@ jobs:
   build_linux:
     strategy:
       fail-fast: false
+      matrix:
+        variant:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
     # Don't run scheduled builds on forks:
     if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') }}
     uses: ./.github/workflows/build_check_cache.yml
     with:
-      os: ${{ vars.SELF_HOSTED && 'orca-lnx-server' || 'ubuntu-24.04' }}
+      os: ${{ vars.SELF_HOSTED && 'orca-lnx-server' || matrix.variant.runner }}
+      arch: ${{ matrix.variant.arch }}
       build-deps-only: ${{ inputs.build-deps-only || false }}
     secrets: inherit
   build_windows:
@@ -112,7 +119,7 @@ jobs:
       - name: Restore Test Artifact
         uses: actions/download-artifact@v8
         with:
-          name: ${{ github.sha }}-tests
+          name: ${{ github.sha }}-tests-x86_64
       - uses: lukka/get-cmake@latest
         with:
           cmakeVersion: "~4.3.0"  # use most recent 4.3.x version
@@ -138,7 +145,9 @@ jobs:
         if: success()
         uses: geekyeggo/delete-artifact@v6
         with:
-          name: ${{ github.sha }}-tests
+          name: |
+            ${{ github.sha }}-tests-x86_64
+            ${{ github.sha }}-tests-aarch64
   flatpak:
     name: "Flatpak"
     container:
